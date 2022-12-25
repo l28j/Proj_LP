@@ -1,0 +1,31 @@
+% 106221 João Lucas Morais Cardoso Tavares Rodrigues
+:- set_prolog_flag(answer_write_options,[max_depth(0)]). % para listas completas
+:- ['dados.pl'], ['keywords.pl']. % ficheiros a importar.
+
+eventosSemSalas(EventosSemSala):-
+    findall(ID,evento(ID,_,_,_,'semSala'),EventosSemSala).
+
+eventosSemSalasDiaSemana(DiaDaSemana,EventosSemSala):- 
+    findall(ID,(evento(ID,_,_,_,'semSala'),horario(ID,DiaDaSemana,_,_,_,_)),EventosSSala).
+
+
+periodos('p1','p1','p1_2').
+periodos('p3','p3','p3_4').
+periodos('p2','p2','p1_2').
+periodos('p4','p4','p3_4').
+
+eventosSemSalasPeriodo(List,EventosSemSala):- 
+    eventosSemSalasPeriodo(List,[],EventosSemSala).
+
+eventosSemSalasPeriodo([],EventosSemSala_Aux,EventosSemSala_Aux).
+
+eventosSemSalasPeriodo([P|Resto],EventosSemSala_Aux,EventosSemSala):-
+    periodos(P,P1,P2),
+    findall(ID,evento(ID,_,_,_,'semSala'),EventosSSala),
+    findall(ID,(horario(ID,_,_,_,_,P1);horario(ID,_,_,_,_,P2)),EventosPeriodo),
+    intersection(EventosSSala,EventosPeriodo,EventosSemSala_Aux1),
+    append(EventosSemSala_Aux,EventosSemSala_Aux1,EventosSemSala_Aux2),
+    eventosSemSalasPeriodo(Resto,EventosSemSala_Aux2,EventosSemSala).
+
+
+
