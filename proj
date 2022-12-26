@@ -1,18 +1,22 @@
+
+
 % 106221 João Lucas Morais Cardoso Tavares Rodrigues
-:- set_prolog_flag(answer_write_options,[max_depth(0)]). % para listas completas
+:- set_prolog_flag(answer_write_options,[max_dEventosth(0)]). % para listas compRestotas
 :- ['dados.pl'], ['keywords.pl']. % ficheiros a importar.
+
 
 eventosSemSalas(EventosSemSala):-
     findall(ID,evento(ID,_,_,_,'semSala'),EventosSemSala).
 
 eventosSemSalasDiaSemana(DiaDaSemana,EventosSemSala):- 
-    findall(ID,(evento(ID,_,_,_,'semSala'),horario(ID,DiaDaSemana,_,_,_,_)),EventosSSala).
+    findall(ID,(evento(ID,_,_,_,'semSala'),horario(ID,DiaDaSemana,_,_,_,_)),EventosSemSala).
 
 
 periodos('p1','p1','p1_2').
 periodos('p3','p3','p3_4').
 periodos('p2','p2','p1_2').
 periodos('p4','p4','p3_4').
+
 
 eventosSemSalasPeriodo(List,EventosSemSala):- 
     eventosSemSalasPeriodo(List,[],EventosSemSala).
@@ -26,6 +30,110 @@ eventosSemSalasPeriodo([P|Resto],EventosSemSala_Aux,EventosSemSala):-
     intersection(EventosSSala,EventosPeriodo,EventosSemSala_Aux1),
     append(EventosSemSala_Aux,EventosSemSala_Aux1,EventosSemSala_Aux2),
     eventosSemSalasPeriodo(Resto,EventosSemSala_Aux2,EventosSemSala).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+organizaEventos([],_,[]).
+
+organizaEventos([ID|Resto],P,[ID|Eventos]):-
+    periodos(P,P1,P2),
+    (horario(ID,_,_,_,_,P1);
+    horario(ID,_,_,_,_,P2)),
+    organizaEventos(Resto,P,Eventos).
+
+organizaEventos([ID|Resto],P,Eventos):-
+    horario(ID,_,_,_,_,P_ID),
+    P_ID\==P,
+    organizaEventos(Resto,P,Eventos).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+eventosMenoresQue(Duracao,ListaEventosMenoresQue):-
+    findall(ID,(horario(ID,_,_,_,D,_),D=<Duracao),ListaEventosMenoresQue).
+
+eventosMenoresQueBool(ID,Duracao):-
+    horario(ID,_,_,_,D,_),
+    D=<Duracao.
+
+procuraDisciplinas(Curso, ListaDisciplinas):-
+    findall(ID,turno(ID,Curso,_,_),ListaID),
+    findall(Disciplinas,(member(ID,ListaID),evento(ID,Disciplinas,_,_,_)),ListaDisciplinas1),
+    sort(ListaDisciplinas1,ListaDisciplinas).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+horasCurso(Periodo, Curso, Ano, TotalHoras):-
+    periodos(Periodo,Periodo1,Periodo2),
+    findall(ID,turno(ID,Curso,Ano,_),ListaID),
+    sort(ListaID,ListaID_F),
+    findall(Horas,(member(ID,ListaID_F),horario(ID,_,_,_,Horas,Periodo1)),ListaHoras1),
+    findall(Horas,(member(ID,ListaID_F),horario(ID,_,_,_,Horas,Periodo2)),ListaHoras2),
+    append(ListaHoras1,ListaHoras2,ListaHoras),
+    sumlist(ListaHoras,TotalHoras).
+
+
+evolucaoHorasCurso(Curso, Evolucao):-
+    evolucaoHorasCurso(Curso, 1, Evolucao).
+evolucaoHorasCurso(_, 5, []).
+evolucaoHorasCurso(Curso, Ano, Evolucao):-
+    horasCurso('p1', Curso, Ano, Horas1),
+    horasCurso('p2', Curso, Ano, Horas2),
+    horasCurso('p3', Curso, Ano, Horas3),
+    horasCurso('p4', Curso, Ano, Horas4),
+    Evolucao_Aux is [(Ano,'p1',Horas1),(Ano,'p2',Horas2),(Ano,'p3',Horas3),(Ano,'p4',Horas4)],
+    Ano_Aux is Ano+1,
+    evolucaoHorasCurso(Curso, Ano_Aux, Evolucao_Aux2),
+    append(Evolucao_Aux, Evolucao_Aux2, Evolucao).
+
+
+
+
+
+
+ocupaSlot(HoraInicioDada, HoraFimDada, HoraInicioEvento, HoraFimEvento, Horas):-
+    ((HoraInicioDada =< HoraInicioEvento, HoraFimDada >= HoraFimEvento , Horas is HoraFimEvento - HoraInicioEvento);
+    (HoraInicioDada >= HoraInicioEvento, HoraFimDada =< HoraFimEvento, Horas is  HoraFimDada - HoraInicioDada);
+    (HoraInicioDada =< HoraInicioEvento, HoraFimDada =< HoraFimEvento, HoraFimDada >= HoraInicioEvento, Horas is HoraFimDada - HoraInicioEvento);
+    (HoraInicioDada >= HoraInicioEvento, HoraFimDada >= HoraFimEvento, HoraInicioDada =< HoraFimEvento, Horas is HoraFimEvento - HoraInicioDada)),
+    Horas > 0.
+
+%%%%%AUXILIAR%%%%%
+
+id_salas_diaSemana(Periodo,TipoSala,DiaDaSemana,ListaID_Salas_DiaSemana):-
+    periodos(Periodo,Periodo1,Periodo2),
+    salas(TipoSala,ListaSalas),
+    findall(ID,(member(Sala,ListaSalas),evento(ID,_,_,_,Sala)),ListaID_Salas),
+    findall(ID,(horario(ID,DiaDaSemana,_,_,_,Periodo1);horario(ID,DiaDaSemana,_,_,_,Periodo2)),ListaID),
+    intersection(ListaID,ListaID_Salas,ListaID_Salas_DiaSemana).
+
+ocupaSlot_aux(HoraInicioDada, HoraFimDada, HoraInicioEvento, HoraFimEvento, Horas):-
+    ((HoraInicioDada =< HoraInicioEvento, HoraFimDada >= HoraFimEvento , Horas is HoraFimEvento - HoraInicioEvento);
+    (HoraInicioDada >= HoraInicioEvento, HoraFimDada =< HoraFimEvento, Horas is  HoraFimDada - HoraInicioDada);
+    (HoraInicioDada =< HoraInicioEvento, HoraFimDada =< HoraFimEvento, HoraFimDada >= HoraInicioEvento, Horas is HoraFimDada - HoraInicioEvento);
+    (HoraInicioDada >= HoraInicioEvento, HoraFimDada >= HoraFimEvento, HoraInicioDada =< HoraFimEvento, Horas is HoraFimEvento - HoraInicioDada));
+    Horas is 0.
+
+numHorasOcupadas(Periodo, TipoSala, DiaSemana, HoraInicio, HoraFim, SomaHoras):-
+    id_salas_diaSemana(Periodo,TipoSala,DiaSemana,ListaID_Salas_DiaSemana),
+    findall(HoraInicioEvento,(member(ID,ListaID_Salas_DiaSemana),horario(ID,_,HoraInicioEvento,_,_,_)),ListaHoras_Inicio),
+    findall(HoraFimEvento,(member(ID,ListaID_Salas_DiaSemana),horario(ID,_,_,HoraFimEvento,_,_)),ListaHoras_Fim),
+    maplist(ocupaSlot_aux(HoraInicio,HoraFim),ListaHoras_Inicio,ListaHoras_Fim,ListaHoras),
+    sumlist(ListaHoras,SomaHoras).
+
+
+
+ocupacaoMax(TipoSala, HoraInicio, HoraFim, Max):-
+    salas(TipoSala,ListaSalas),
+    length(ListaSalas,NumSalas),
+    Max is NumSalas*(HoraFim-HoraInicio).
+
+
+percentagem(SomaHoras, Max, Percentagem):-
+    Percentagem is (SomaHoras/Max)*100.
+
+ocupacaoCritica(HoraInicio, HoraFim, Threshold, Resultados).
+
+    
+
 
 
 
