@@ -1,22 +1,21 @@
 
 
-% 106221 João Lucas Morais Cardoso Tavares Rodrigues
+% 106221 Joao Lucas Morais Cardoso Tavares Rodrigues
 :- set_prolog_flag(answer_write_options,[max_dEventosth(0)]). % para listas compRestotas
 :- ['dados.pl'], ['keywords.pl']. % ficheiros a importar.
 
+periodos('p1','p1','p1_2').
+periodos('p3','p3','p3_4').
+periodos('p2','p2','p1_2').
+periodos('p4','p4','p3_4').
+semestres('p1_2','p1','p2').
+semestres('p3_4','p3','p4').
 
 eventosSemSalas(EventosSemSala):-
     findall(ID,evento(ID,_,_,_,'semSala'),EventosSemSala).
 
 eventosSemSalasDiaSemana(DiaDaSemana,EventosSemSala):- 
     findall(ID,(evento(ID,_,_,_,'semSala'),horario(ID,DiaDaSemana,_,_,_,_)),EventosSemSala).
-
-
-periodos('p1','p1','p1_2').
-periodos('p3','p3','p3_4').
-periodos('p2','p2','p1_2').
-periodos('p4','p4','p3_4').
-
 
 eventosSemSalasPeriodo(List,EventosSemSala):- 
     eventosSemSalasPeriodo(List,[],EventosSemSala).
@@ -29,23 +28,28 @@ eventosSemSalasPeriodo([P|Resto],EventosSemSala_Aux,EventosSemSala):-
     findall(ID,(horario(ID,_,_,_,_,P1);horario(ID,_,_,_,_,P2)),EventosPeriodo),
     intersection(EventosSSala,EventosPeriodo,EventosSemSala_Aux1),
     append(EventosSemSala_Aux,EventosSemSala_Aux1,EventosSemSala_Aux2),
-    eventosSemSalasPeriodo(Resto,EventosSemSala_Aux2,EventosSemSala).
+    sort(EventosSemSala_Aux2,EventosSemSala_Aux3),
+    eventosSemSalasPeriodo(Resto,EventosSemSala_Aux3,EventosSemSala).
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-organizaEventos([],_,[]).
 
-organizaEventos([ID|Resto],P,[ID|Eventos]):-
-    periodos(P,P1,P2),
-    (horario(ID,_,_,_,_,P1);
-    horario(ID,_,_,_,_,P2)),
-    organizaEventos(Resto,P,Eventos).
+organizaEventos(ListaEventos,Periodo,EventosNoPeriodo):-
+    organizaEventos(ListaEventos,Periodo,EventosNoPeriodo,[]).
+organizaEventos([],_,EventosNoPeriodo,EventosNoPeriodo_Aux):-
+    sort(EventosNoPeriodo_Aux,EventosNoPeriodo).
+organizaEventos([Id|Resto],Periodo,EventosNoPeriodo,EventosNoPeriodo_Aux):-
+    periodos(Periodo,P1,P2),
+    (horario(Id,_,_,_,_,P1);
+    horario(Id,_,_,_,_,P2)),
+    append(EventosNoPeriodo_Aux,[Id],EventosNoPeriodo_Aux1),
+    organizaEventos(Resto,Periodo,EventosNoPeriodo,EventosNoPeriodo_Aux1).
+organizaEventos([Id|Resto],Periodo,EventosNoPeriodo,EventosNoPeriodo_Aux):-
+    periodos(Periodo,P1,P2),
+    horario(Id,_,_,_,_,Periodo_Refe),
+    (Periodo_Refe\==P1,
+    Periodo_Refe\==P2),
+    organizaEventos(Resto,Periodo,EventosNoPeriodo,EventosNoPeriodo_Aux).
 
-organizaEventos([ID|Resto],P,Eventos):-
-    horario(ID,_,_,_,_,P_ID),
-    P_ID\==P,
-    organizaEventos(Resto,P,Eventos).
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+    
 eventosMenoresQue(Duracao,ListaEventosMenoresQue):-
     findall(ID,(horario(ID,_,_,_,D,_),D=<Duracao),ListaEventosMenoresQue).
 
@@ -58,8 +62,7 @@ procuraDisciplinas(Curso, ListaDisciplinas):-
     findall(Disciplinas,(member(ID,ListaID),evento(ID,Disciplinas,_,_,_)),ListaDisciplinas1),
     sort(ListaDisciplinas1,ListaDisciplinas).
 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
 
 horasCurso(Periodo, Curso, Ano, TotalHoras):-
     periodos(Periodo,Periodo1,Periodo2),
@@ -70,23 +73,23 @@ horasCurso(Periodo, Curso, Ano, TotalHoras):-
     append(ListaHoras1,ListaHoras2,ListaHoras),
     sumlist(ListaHoras,TotalHoras).
 
+   
 
-evolucaoHorasCurso(Curso, Evolucao):-
-    evolucaoHorasCurso(Curso, 1, Evolucao).
-evolucaoHorasCurso(_, 5, []).
-evolucaoHorasCurso(Curso, Ano, Evolucao):-
-    horasCurso('p1', Curso, Ano, Horas1),
-    horasCurso('p2', Curso, Ano, Horas2),
-    horasCurso('p3', Curso, Ano, Horas3),
-    horasCurso('p4', Curso, Ano, Horas4),
-    Evolucao_Aux is [(Ano,'p1',Horas1),(Ano,'p2',Horas2),(Ano,'p3',Horas3),(Ano,'p4',Horas4)],
+evolucaoHorasCurso(Curso,Evolucao):-
+    evolucaoHorasCurso(Curso,Evolucao,[],1).
+evolucaoHorasCurso(Curso,Evolucao,Evolucao_Aux,Ano):-
+    Ano =< 3,
+    horasCurso('p1',Curso,Ano,TotalHoras1),
+    append(Evolucao_Aux,[(Ano,'p1',TotalHoras1)],Evolucao1),
+    horasCurso('p2',Curso,Ano,TotalHoras2),
+    append(Evolucao1,[(Ano,'p2',TotalHoras2)],Evolucao2),
+    horasCurso('p3',Curso,Ano,TotalHoras3),
+    append(Evolucao2,[(Ano,'p3',TotalHoras3)],Evolucao3),
+    horasCurso('p4',Curso,Ano,TotalHoras4),
+    append(Evolucao3,[(Ano,'p4',TotalHoras4)],Evolucao4),
     Ano_Aux is Ano+1,
-    evolucaoHorasCurso(Curso, Ano_Aux, Evolucao_Aux2),
-    append(Evolucao_Aux, Evolucao_Aux2, Evolucao).
-
-
-
-
+    evolucaoHorasCurso(Curso,Evolucao,Evolucao4,Ano_Aux).
+evolucaoHorasCurso(_,Evolucao,Evolucao,_).
 
 
 ocupaSlot(HoraInicioDada, HoraFimDada, HoraInicioEvento, HoraFimEvento, Horas):-
@@ -96,7 +99,6 @@ ocupaSlot(HoraInicioDada, HoraFimDada, HoraInicioEvento, HoraFimEvento, Horas):-
     (HoraInicioDada >= HoraInicioEvento, HoraFimDada >= HoraFimEvento, HoraInicioDada =< HoraFimEvento, Horas is HoraFimEvento - HoraInicioDada)),
     Horas > 0.
 
-%%%%%AUXILIAR%%%%%
 
 id_salas_diaSemana(Periodo,TipoSala,DiaDaSemana,ListaID_Salas_DiaSemana):-
     periodos(Periodo,Periodo1,Periodo2),
@@ -106,10 +108,7 @@ id_salas_diaSemana(Periodo,TipoSala,DiaDaSemana,ListaID_Salas_DiaSemana):-
     intersection(ListaID,ListaID_Salas,ListaID_Salas_DiaSemana).
 
 ocupaSlot_aux(HoraInicioDada, HoraFimDada, HoraInicioEvento, HoraFimEvento, Horas):-
-    ((HoraInicioDada =< HoraInicioEvento, HoraFimDada >= HoraFimEvento , Horas is HoraFimEvento - HoraInicioEvento);
-    (HoraInicioDada >= HoraInicioEvento, HoraFimDada =< HoraFimEvento, Horas is  HoraFimDada - HoraInicioDada);
-    (HoraInicioDada =< HoraInicioEvento, HoraFimDada =< HoraFimEvento, HoraFimDada >= HoraInicioEvento, Horas is HoraFimDada - HoraInicioEvento);
-    (HoraInicioDada >= HoraInicioEvento, HoraFimDada >= HoraFimEvento, HoraInicioDada =< HoraFimEvento, Horas is HoraFimEvento - HoraInicioDada));
+    ocupaSlot(HoraInicioDada, HoraFimDada, HoraInicioEvento, HoraFimEvento, Horas);
     Horas is 0.
 
 numHorasOcupadas(Periodo, TipoSala, DiaSemana, HoraInicio, HoraFim, SomaHoras):-
@@ -118,7 +117,6 @@ numHorasOcupadas(Periodo, TipoSala, DiaSemana, HoraInicio, HoraFim, SomaHoras):-
     findall(HoraFimEvento,(member(ID,ListaID_Salas_DiaSemana),horario(ID,_,_,HoraFimEvento,_,_)),ListaHoras_Fim),
     maplist(ocupaSlot_aux(HoraInicio,HoraFim),ListaHoras_Inicio,ListaHoras_Fim,ListaHoras),
     sumlist(ListaHoras,SomaHoras).
-
 
 
 ocupacaoMax(TipoSala, HoraInicio, HoraFim, Max):-
@@ -130,10 +128,100 @@ ocupacaoMax(TipoSala, HoraInicio, HoraFim, Max):-
 percentagem(SomaHoras, Max, Percentagem):-
     Percentagem is (SomaHoras/Max)*100.
 
-ocupacaoCritica(HoraInicio, HoraFim, Threshold, Resultados).
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+funcao(Sala,TipoSala):-
+    salas(TipoSala,ListaSalas),
+    member(Sala,ListaSalas).
 
     
+id_s_HI_HF(HoraInicio,HoraFim,ListaID_F):-
+    findall(ID,(horario(ID,_,HI,_,_,_),horario(ID,_,_,HF,_,_),(HI>=HoraInicio,HF=<HoraFim)),ListaID_F).
+periodos_ID(ListaID,ListaPeriodos):-
+    findall(Periodo,(member(ID,ListaID),horario(ID,_,_,_,_,Periodo)),ListaPeriodos).
+dias_semana_ID(ListaID,ListaDiasSemana):-
+    findall(DiaSemana,(member(ID,ListaID),horario(ID,DiaSemana,_,_,_,_)),ListaDiasSemana).
+tipo_sala_ID(ListaID,ListaTipoSala):-
+    findall(NSala,(member(ID,ListaID),evento(ID,_,_,_,NSala)),ListaNSala),
+    maplist(funcao,ListaNSala,ListaTipoSala).
+
+
+ocupacaoCritica(HoraInicio, HoraFim, Threshold, Resultados):-
+    id_s_HI_HF(HoraInicio,HoraFim,ListaID),
+    periodos_ID(ListaID,ListaPeriodos),
+    dias_semana_ID(ListaID,ListaDiasSemana),
+    tipo_sala_ID(ListaID,ListaTipoSala),
+    findall(ID,(member(ID,ListaID),member(Periodo,ListaPeriodos),member(DiaSemana,ListaDiasSemana),member(TipoSala,ListaTipoSala),
+    numHorasOcupadas(Periodo,TipoSala,DiaSemana,HoraInicio,HoraFim,SomaHoras),
+    ocupacaoMax(TipoSala,HoraInicio,HoraFim,Max),
+    percentagem(SomaHoras,Max,Percentagem),
+    Percentagem>Threshold),Resultados).
 
 
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+verificador_Disciplinas([Disciplina|Resto],Curso):-
+    procuraDisciplinas(Curso,ListaProcuraDisciplinas),
+    member(Disciplina,ListaProcuraDisciplinas),
+    verificador_Disciplinas(Resto,Curso).
+verificador_Disciplinas([],_).
+
+organizaDisciplinas_1SEMESTRE(ListaDisciplinas,Curso,Semestre1):-
+    organizaDisciplinas_1SEMESTRE_aux(ListaDisciplinas,Curso,Semestre1,[]).
+organizaDisciplinas_1SEMESTRE_aux([],_,Semestre1,Semestre1_Aux):-
+    sort(Semestre1_Aux,Semestre1).
+organizaDisciplinas_1SEMESTRE_aux([Disciplina|Resto],Curso,Semestre1,Semestre1_Aux):-
+    semestres('p1_2',P1,P2),
+    evento(Id,Disciplina,_,_,_),
+    (horario(Id,_,_,_,_,P1);
+    horario(Id,_,_,_,_,P2)),
+    append(Semestre1_Aux,[Disciplina],Semestre1_Aux1),
+    organizaDisciplinas_1SEMESTRE_aux(Resto,Curso,Semestre1,Semestre1_Aux1).
+organizaDisciplinas_1SEMESTRE_aux([Disciplina|Resto],Curso,Semestre1,Semestre1_Aux):-
+    semestres('p1_2',P1,P2),
+    evento(Id,Disciplina,_,_,_),
+    horario(Id,_,_,_,_,Periodo_Refe),
+    (Periodo_Refe\==P1,
+    Periodo_Refe\==P2),
+    organizaDisciplinas_1SEMESTRE_aux(Resto,Curso,Semestre1,Semestre1_Aux).
+
+
+organizaDisciplinas_2SEMESTRE(ListaDisciplinas,Curso,Semestre2):-
+    organizaDisciplinas_2SEMESTRE_aux(ListaDisciplinas,Curso,Semestre2,[]).
+organizaDisciplinas_2SEMESTRE_aux([],_,Semestre2,Semestre2_Aux):-
+    sort(Semestre2_Aux,Semestre2).
+organizaDisciplinas_2SEMESTRE_aux([Disciplina|Resto],Curso,Semestre2,Semestre2_Aux):-
+    semestres('p3_4',P1,P2),
+    evento(Id,Disciplina,_,_,_),
+    (horario(Id,_,_,_,_,P1);
+    horario(Id,_,_,_,_,P2)),
+    append(Semestre2_Aux,[Disciplina],Semestre2_Aux1),
+    organizaDisciplinas_2SEMESTRE_aux(Resto,Curso,Semestre2,Semestre2_Aux1).
+organizaDisciplinas_2SEMESTRE_aux([Disciplina|Resto],Curso,Semestre2,Semestre2_Aux):-
+    semestres('p3_4',P1,P2),
+    evento(Id,Disciplina,_,_,_),
+    horario(Id,_,_,_,_,Periodo_Refe),
+    (Periodo_Refe\==P1,
+    Periodo_Refe\==P2),
+    organizaDisciplinas_2SEMESTRE_aux(Resto,Curso,Semestre2,Semestre2_Aux).
+
+verifica_exi_dis_iguais(ListaSemestre1,ListaSemestre2,ListaSemestre1Final):-
+    verifica_exi_dis_iguais_aux(ListaSemestre1,ListaSemestre1Final,[],ListaSemestre2).
+verifica_exi_dis_iguais_aux([],ListaSemestr1Final,ListaSemestr1Final,_).
+verifica_exi_dis_iguais_aux([Disciplina|Resto],ListaSemestr1Final,ListaSemestr1Final_Aux,ListaSemestre2):-
+    member(Disciplina,ListaSemestre2),
+    verifica_exi_dis_iguais_aux(Resto,ListaSemestr1Final,ListaSemestr1Final_Aux,ListaSemestre2).
+verifica_exi_dis_iguais_aux([Disciplina|Resto],ListaSemestr1Final,ListaSemestr1Final_Aux,ListaSemestre2):-
+    \+member(Disciplina,ListaSemestre2),
+    append(ListaSemestr1Final_Aux,[Disciplina],ListaSemestr1Final_Aux1),
+    verifica_exi_dis_iguais_aux(Resto,ListaSemestr1Final,ListaSemestr1Final_Aux1,ListaSemestre2).
+
+organizaDisciplinas(ListaDisciplinas,Curso,Semestres):-
+    verificador_Disciplinas(ListaDisciplinas,Curso),
+    organizaDisciplinas_1SEMESTRE(ListaDisciplinas,Curso,Semestre1),
+    organizaDisciplinas_2SEMESTRE(ListaDisciplinas,Curso,Semestre2),
+    verifica_exi_dis_iguais(Semestre1,Semestre2,Semestre1Final),
+    append([Semestre1Final],[Semestre2],Semestres).
 
